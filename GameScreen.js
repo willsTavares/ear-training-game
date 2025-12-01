@@ -29,15 +29,25 @@ const AUDIO_FILES = {
 const getNotesByLevel = (level) => {
   switch (level) {
     case 1:
-      return ['C', 'D', 'E'];
+      return ['C', 'E'];
     case 2:
-      return ['C', 'D', 'E', 'F', 'G', 'A'];
+      return ['C', 'E', 'G'];
     case 3:
-      return ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+      return ['C', 'D', 'E', 'G'];
     case 4:
+      return ['C', 'D', 'E', 'F', 'G'];
+    case 5:
+      return ['C', 'D', 'E', 'F', 'G', 'A'];
+    case 6:
+      return ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+    case 7:
+      return ['C', 'C#', 'D', 'E', 'F', 'G', 'A', 'B'];
+    case 8:
+      return ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'A', 'B'];
+    case 9:
       return ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
     default:
-      return ['C', 'D', 'E'];
+      return ['C', 'E'];
   }
 };
 
@@ -73,13 +83,23 @@ export default function GameScreen() {
 
   useEffect(() => {
     // Progressão automática de nível
-    let newLevel = level;
+    let newLevel = 1;
     
-    if (score >= 20 && level < 4) {
+    if (score >= 40) {
+      newLevel = 9;
+    } else if (score >= 35) {
+      newLevel = 8;
+    } else if (score >= 30) {
+      newLevel = 7;
+    } else if (score >= 25) {
+      newLevel = 6;
+    } else if (score >= 20) {
+      newLevel = 5;
+    } else if (score >= 15) {
       newLevel = 4;
-    } else if (score >= 10 && level < 3) {
+    } else if (score >= 10) {
       newLevel = 3;
-    } else if (score >= 5 && level < 2) {
+    } else if (score >= 5) {
       newLevel = 2;
     }
     
@@ -90,7 +110,7 @@ export default function GameScreen() {
         setFeedback('');
       }, 2000);
     }
-  }, [score]);
+  }, [score, level]);
 
   const configureAudio = async () => {
     try {
@@ -280,7 +300,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: 20,
-    marginBottom: 30,
+    marginBottom: 20,
   },
   scoreContainer: {
     backgroundColor: '#16213e',
@@ -310,6 +330,18 @@ const styles = StyleSheet.create({
   },
   livesText: {
     fontSize: 24,
+  },
+  levelContainer: {
+    backgroundColor: '#16213e',
+    padding: 15,
+    borderRadius: 15,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  levelText: {
+    color: '#f59e0b',
+    fontSize: 22,
+    fontWeight: 'bold',
   },
   titleContainer: {
     alignItems: 'center',
