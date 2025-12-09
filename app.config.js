@@ -1,0 +1,36 @@
+require('dotenv').config();
+
+export default {
+  expo: {
+    name: "ear-training-game",
+    slug: "ear-training-game",
+    version: "1.0.0",
+    orientation: "portrait",
+    icon: "./assets/icon.png",
+    userInterfaceStyle: "light",
+    splash: {
+      image: "./assets/splash.png",
+      resizeMode: "contain",
+      backgroundColor: "#1a1a2e"
+    },
+    assetBundlePatterns: [
+      "**/*"
+    ],
+    ios: {
+      supportsTablet: true
+    },
+    android: {
+      adaptiveIcon: {
+        foregroundImage: "./assets/adaptive-icon.png",
+        backgroundColor: "#1a1a2e"
+      },
+      package: "com.stafflpl.eartraininggame",
+      config: {
+        googleMobileAdsAppId: process.env.GOOGLE_ADMOB_APP_ID
+      }
+    },
+    web: {
+      favicon: "./assets/favicon.png"
+    }
+  }
+};

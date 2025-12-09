@@ -1,6 +1,11 @@
 import React from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import GameScreen from './GameScreen';
 
 export default function App() {
-  return <GameScreen />;
+  return (
+    <SafeAreaProvider>
+      <GameScreen />
+    </SafeAreaProvider>
+  );
 }
