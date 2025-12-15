@@ -139,38 +139,65 @@ export default function GameScreen() {
 
   const playRandomNote = async () => {
     try {
+      console.log('playRandomNote iniciado');
       // Limpar feedback anterior
       setFeedback('');
 
       // Liberar player anterior se existir
       if (playerRef.current) {
-        playerRef.current.release();
+        try {
+          playerRef.current.release();
+        } catch (e) {
+          console.warn('Erro ao liberar player anterior:', e);
+        }
         playerRef.current = null;
       }
 
       // Escolher nota aleatória baseada no nível
       const notes = getNotesByLevel(level);
+      if (!notes || notes.length === 0) {
+        throw new Error('Nenhuma nota disponível para este nível');
+      }
+
       const randomIndex = Math.floor(Math.random() * notes.length);
       const selectedNote = notes[randomIndex];
+      console.log('Nota selecionada:', selectedNote);
+      
       setCorrectNote(selectedNote);
 
+      // Verificar se o arquivo de áudio existe
+      const audioFile = AUDIO_FILES[selectedNote];
+      if (!audioFile) {
+        throw new Error(`Arquivo de áudio não encontrado para nota: ${selectedNote}`);
+      }
+
       // Criar novo player com a nota selecionada
-      const player = createAudioPlayer(AUDIO_FILES[selectedNote]);
+      const player = createAudioPlayer(audioFile);
+      
+      if (!player) {
+        throw new Error('Falha ao criar player de áudio');
+      }
+
       playerRef.current = player;
       
       // Listener para quando terminar de tocar
-      player.addListener('playbackStatusUpdate', (status) => {
-        if (status.didJustFinish) {
-          setIsPlaying(false);
-          // Parar animação e resetar
-          if (animationRef.current) {
-            animationRef.current.stop();
+      const unsubscribe = player.addListener('playbackStatusUpdate', (status) => {
+        try {
+          if (status.didJustFinish) {
+            console.log('Áudio terminou de tocar');
+            setIsPlaying(false);
+            // Parar animação e resetar
+            if (animationRef.current) {
+              animationRef.current.stop();
+            }
+            // Garantir que a barra chegue ao fim e depois resete
+            progressAnim.setValue(1);
+            setTimeout(() => {
+              progressAnim.setValue(0);
+            }, 150);
           }
-          // Garantir que a barra chegue ao fim e depois resete
-          progressAnim.setValue(1);
-          setTimeout(() => {
-            progressAnim.setValue(0);
-          }, 150);
+        } catch (e) {
+          console.error('Erro no listener de status:', e);
         }
       });
 
@@ -178,17 +205,26 @@ export default function GameScreen() {
       
       // Iniciar animação de progresso (1 segundo = duração dos áudios)
       progressAnim.setValue(0);
+      
+      if (animationRef.current) {
+        animationRef.current.stop();
+      }
+
       animationRef.current = Animated.timing(progressAnim, {
         toValue: 1,
         duration: 1000,
         useNativeDriver: false,
       });
+      
       animationRef.current.start();
       
-      player.play();
+      console.log('Tocando áudio');
+      await player.play();
+      console.log('Áudio iniciou com sucesso');
     } catch (error) {
       console.error('Erro ao tocar nota:', error);
-      setFeedback('❌ Erro ao carregar áudio');
+      setFeedback(`❌ Erro: ${error.message}`);
+      setLoadError(error.message);
     }
   };
 
@@ -197,12 +233,18 @@ export default function GameScreen() {
 
     try {
       if (playerRef.current) {
-        playerRef.current.seekTo(0);
-        playerRef.current.play();
+        console.log('Tocando novamente');
+        await playerRef.current.seekTo(0);
+        await playerRef.current.play();
         setIsPlaying(true);
         
         // Iniciar animação de progresso (1 segundo = duração dos áudios)
         progressAnim.setValue(0);
+        
+        if (animationRef.current) {
+          animationRef.current.stop();
+        }
+
         animationRef.current = Animated.timing(progressAnim, {
           toValue: 1,
           duration: 1000,
@@ -212,6 +254,7 @@ export default function GameScreen() {
       }
     } catch (error) {
       console.error('Erro ao tocar novamente:', error);
+      setFeedback('❌ Erro ao reproduzir áudio');
     }
   };
 
