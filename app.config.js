@@ -2,7 +2,7 @@ require('dotenv').config();
 
 export default {
   expo: {
-    name: "ear-training-game",
+    name: "Ear Training Game",
     slug: "ear-training-game",
     version: "1.0.0",
     orientation: "portrait",
@@ -24,13 +24,18 @@ export default {
         foregroundImage: "./assets/adaptive-icon.png",
         backgroundColor: "#1a1a2e"
       },
-      package: "com.stafflpl.eartraininggame",
-      config: {
-        googleMobileAdsAppId: process.env.GOOGLE_ADMOB_APP_ID
-      }
+      package: "com.WillsTavares.eartraininggame"
     },
     web: {
       favicon: "./assets/favicon.png"
+    },
+    plugins: [
+      "expo-audio"
+    ],
+    extra: {
+      eas: {
+        projectId: "b375cc78-eadc-434c-9fb0-5c6b6153577c"
+      }
     }
   }
 };

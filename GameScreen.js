@@ -9,10 +9,8 @@ import {
   Animated,
   Modal,
 } from 'react-native';
-import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { createAudioPlayer } from 'expo-audio';
-import { GOOGLE_ADMOB_BANNER_ID } from '@env';
 
 const NOTES = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
 
@@ -32,9 +30,6 @@ const AUDIO_FILES = {
 };
 
 const getNotesByLevel = (level) => {
-
-  // Prod unit (banner)
-  const BANNER_AD_UNIT_ID = 'ca-app-pub-3940256099942544/6300978111';
   switch (level) {
     case 1:
       return ['C', 'E'];
@@ -59,11 +54,6 @@ const getNotesByLevel = (level) => {
   }
 };
 
-// Use TestIds.BANNER para desenvolvimento, troque pelo seu ID em produção
-const BANNER_AD_UNIT_ID = __DEV__ 
-  ? TestIds.BANNER 
-  : GOOGLE_ADMOB_BANNER_ID;
-
 export default function GameScreen() {
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);
@@ -74,6 +64,7 @@ export default function GameScreen() {
   const [gameOver, setGameOver] = useState(false);
   const [buttonWidth, setButtonWidth] = useState(0);
   const [showRestartModal, setShowRestartModal] = useState(false);
+  const [loadError, setLoadError] = useState(null);
   const playerRef = useRef(null);
   const progressAnim = useRef(new Animated.Value(0)).current;
   const animationRef = useRef(null);
@@ -85,17 +76,27 @@ export default function GameScreen() {
 
   useEffect(() => {
     // Tocar primeira nota ao montar
-    const timer = setTimeout(() => {
-      playRandomNote();
-    }, 500);
-    
-    return () => {
-      clearTimeout(timer);
-      // Cleanup do player
-      if (playerRef.current) {
-        playerRef.current.release();
-      }
-    };
+    try {
+      const timer = setTimeout(() => {
+        console.log('Iniciando primeira nota');
+        playRandomNote();
+      }, 500);
+      
+      return () => {
+        clearTimeout(timer);
+        // Cleanup do player
+        if (playerRef.current) {
+          try {
+            playerRef.current.release();
+          } catch (e) {
+            console.error('Erro ao liberar player:', e);
+          }
+        }
+      };
+    } catch (error) {
+      console.error('Erro no useEffect inicial:', error);
+      setLoadError(error.message);
+    }
   }, []);
 
   useEffect(() => {
@@ -254,6 +255,18 @@ export default function GameScreen() {
     setShowRestartModal(true);
   };
 
+  if (loadError) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="light-content" />
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorTitle}>❌ Erro ao carregar</Text>
+          <Text style={styles.errorMessage}>{loadError}</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   if (gameOver) {
     return (
       <SafeAreaView style={styles.container}>
@@ -292,17 +305,6 @@ export default function GameScreen() {
             {'❤️'.repeat(lives)}
           </Text>
         </View>
-      </View>
-
-      {/* Banner AdMob */}
-      <View style={styles.adContainer}>
-        <BannerAd
-          unitId={BANNER_AD_UNIT_ID}
-          size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
-          requestOptions={{
-            requestNonPersonalizedAdsOnly: false,
-          }}
-        />
       </View>
 
       {/* Level */}
@@ -604,6 +606,24 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 24,
     marginBottom: 40,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  errorTitle: {
+    color: '#ef4444',
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 15,
+  },
+  errorMessage: {
+    color: '#94a3b8',
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
   },
   restartButton: {
     backgroundColor: '#10b981',
