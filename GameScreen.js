@@ -68,10 +68,80 @@ export default function GameScreen() {
   const playerRef = useRef(null);
   const progressAnim = useRef(new Animated.Value(0)).current;
   const animationRef = useRef(null);
+  const shakeAnim = useRef(new Animated.Value(0)).current;
+  const [colorTransition, setColorTransition] = useState({
+    from: 1,
+    to: 1,
+    anim: new Animated.Value(1),
+  });
 
   const onButtonLayout = (event) => {
     const { width } = event.nativeEvent.layout;
     setButtonWidth(width);
+  };
+
+  // Paleta de cores por nível
+  const getBackgroundColorByLevel = (currentLevel) => {
+    const colors = {
+      1: '#0A1E3F',  // Azul escuro
+      2: '#2C1B3C',  // Azul arroxeado
+      3: '#4A1833',  // Roxo escuro / vinho
+      4: '#6B1A1A',  // Vermelho escuro
+      5: '#7B1A1A',  // Vermelho escuro +
+      6: '#8B1A1A',  // Vermelho escuro ++
+      7: '#9B0A0A',  // Vermelho intenso
+      8: '#AB0000',  // Vermelho muito intenso
+      9: '#BB0000',  // Vermelho máximo
+    };
+    return colors[currentLevel] || colors[1];
+  };
+
+  // Paleta de cores dos botões por nível (combinam com o fundo)
+  const getButtonColorByLevel = (currentLevel) => {
+    const colors = {
+      1: '#7c3aed',  // Roxo vibrant
+      2: '#a855f7',  // Roxo mais claro
+      3: '#d946ef',  // Pink/Magenta
+      4: '#ec4899',  // Pink intenso
+      5: '#f43f5e',  // Rose
+      6: '#fb7185',  // Rose claro
+      7: '#fca5a5',  // Rose mais claro
+      8: '#fda4af',  // Rose pálido
+      9: '#fbcfe8',  // Pink muito claro
+    };
+    return colors[currentLevel] || colors[1];
+  };
+
+  // Função para disparar animação de shake
+  const triggerShake = () => {
+    shakeAnim.setValue(0);
+    Animated.sequence([
+      Animated.timing(shakeAnim, {
+        toValue: -15,
+        duration: 75,
+        useNativeDriver: true,
+      }),
+      Animated.timing(shakeAnim, {
+        toValue: 15,
+        duration: 75,
+        useNativeDriver: true,
+      }),
+      Animated.timing(shakeAnim, {
+        toValue: -15,
+        duration: 75,
+        useNativeDriver: true,
+      }),
+      Animated.timing(shakeAnim, {
+        toValue: 15,
+        duration: 75,
+        useNativeDriver: true,
+      }),
+      Animated.timing(shakeAnim, {
+        toValue: 0,
+        duration: 75,
+        useNativeDriver: true,
+      }),
+    ]).start();
   };
 
   useEffect(() => {
@@ -136,6 +206,39 @@ export default function GameScreen() {
       }, 2000);
     }
   }, [score, level]);
+
+  // Transição suave de cor ao subir de nível
+  useEffect(() => {
+    setColorTransition((current) => {
+      // Se já estamos no nível correto, não fazer nada
+      if (level === current.to) {
+        return current;
+      }
+
+      // Se voltamos para o nível 1 (restart), resetar imediatamente sem animação
+      if (level === 1 && current.to > 1) {
+        return {
+          from: 1,
+          to: 1,
+          anim: new Animated.Value(1),
+        };
+      }
+
+      // Caso contrário, animar a transição normalmente
+      const newAnim = new Animated.Value(0);
+      Animated.timing(newAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: false,
+      }).start();
+
+      return {
+        from: current.to,
+        to: level,
+        anim: newAnim,
+      };
+    });
+  }, [level]);
 
   const playRandomNote = async () => {
     try {
@@ -275,6 +378,9 @@ export default function GameScreen() {
       setLives(lives - 1);
       setFeedback(`❌ Errou, era: ${correctNote}`);
       
+      // Disparar animação de shake
+      triggerShake();
+      
       // Tocar próxima nota após um delay (se ainda tiver vidas)
       setTimeout(() => {
         if (lives - 1 > 0) {
@@ -286,11 +392,21 @@ export default function GameScreen() {
 
   const restartGame = () => {
     setShowRestartModal(false);
+    setGameOver(false);
+    setFeedback('');
+    
+    // Reset background color transition FIRST
+    setColorTransition({
+      from: 1,
+      to: 1,
+      anim: new Animated.Value(1),
+    });
+    
+    // Then reset game state
     setScore(0);
     setLives(3);
     setLevel(1);
-    setGameOver(false);
-    setFeedback('');
+    
     playRandomNote();
   };
 
@@ -300,7 +416,7 @@ export default function GameScreen() {
 
   if (loadError) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: getBackgroundColorByLevel(level) }]}>
         <StatusBar barStyle="light-content" />
         <View style={styles.errorContainer}>
           <Text style={styles.errorTitle}>❌ Erro ao carregar</Text>
@@ -312,7 +428,7 @@ export default function GameScreen() {
 
   if (gameOver) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: getBackgroundColorByLevel(level) }]}>
         <StatusBar barStyle="light-content" />
         <View style={styles.gameOverContainer}>
           <Text style={styles.gameOverTitle}>Game Over</Text>
@@ -332,10 +448,30 @@ export default function GameScreen() {
     );
   }
 
+  const previousBgColor = getBackgroundColorByLevel(colorTransition.from);
+  const currentBgColor = getBackgroundColorByLevel(colorTransition.to);
+  const bgColorStyle = {
+    backgroundColor: colorTransition.anim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [previousBgColor, currentBgColor],
+    }),
+  };
+
+  const buttonColor = getButtonColorByLevel(level);
+
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, bgColorStyle]}>
       <StatusBar barStyle="light-content" />
       
+      {/* Game container com animação de shake */}
+      <Animated.View
+        style={[
+          styles.gameContainer,
+          {
+            transform: [{ translateX: shakeAnim }],
+          },
+        ]}
+      >
       {/* Header com pontuação e vidas */}
       <View style={styles.header}>
         <View style={styles.scoreContainer}>
@@ -415,7 +551,7 @@ export default function GameScreen() {
         {getNotesByLevel(level).map((note) => (
           <TouchableOpacity
             key={note}
-            style={[styles.noteButton]}
+            style={[styles.noteButton, { backgroundColor: buttonColor, shadowColor: buttonColor }]}
             onPress={() => handleAnswer(note)}
           >
             <Text style={styles.noteButtonText}>{note}</Text>
@@ -453,6 +589,7 @@ export default function GameScreen() {
           </View>
         </View>
       </Modal>
+      </Animated.View>
     </SafeAreaView>
   );
 }
@@ -460,8 +597,11 @@ export default function GameScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
+    backgroundColor: '#0A1E3F',
     paddingHorizontal: 20,
+  },
+  gameContainer: {
+    flex: 1,
   },
   adContainer: {
     marginBottom: 12,
@@ -616,7 +756,6 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   noteButton: {
-    backgroundColor: '#8b5cf6',
     width: 80,
     height: 80,
     borderRadius: 40,
@@ -624,7 +763,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 10,
     elevation: 5,
-    shadowColor: '#8b5cf6',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
