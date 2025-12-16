@@ -8,9 +8,12 @@ import {
   Image,
   Animated,
   Modal,
+  Easing,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { createAudioPlayer } from 'expo-audio';
+import { useFonts, Inter_400Regular, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
+import * as Haptics from 'expo-haptics';
 
 const NOTES = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
 
@@ -46,8 +49,10 @@ const getNotesByLevel = (level) => {
     case 7:
       return ['C', 'C#', 'D', 'E', 'F', 'G', 'A', 'B'];
     case 8:
-      return ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'A', 'B'];
+      return ['C', 'C#', 'D', 'D#', 'E', 'F', 'G', 'A', 'B'];
     case 9:
+      return ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'B'];
+    case 10:
       return ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
     default:
       return ['C', 'E'];
@@ -55,6 +60,12 @@ const getNotesByLevel = (level) => {
 };
 
 export default function GameScreen() {
+  const [fontsLoaded] = useFonts({
+    Inter_400Regular,
+    Inter_600SemiBold,
+    Inter_700Bold,
+  });
+
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);
   const [level, setLevel] = useState(1);
@@ -65,15 +76,122 @@ export default function GameScreen() {
   const [buttonWidth, setButtonWidth] = useState(0);
   const [showRestartModal, setShowRestartModal] = useState(false);
   const [loadError, setLoadError] = useState(null);
+  const [lastCorrectButton, setLastCorrectButton] = useState(null);
+  const [levelUpVisible, setLevelUpVisible] = useState(false);
+  const [isProcessingAnswer, setIsProcessingAnswer] = useState(false);
   const playerRef = useRef(null);
   const progressAnim = useRef(new Animated.Value(0)).current;
   const animationRef = useRef(null);
   const shakeAnim = useRef(new Animated.Value(0)).current;
+  const buttonScaleAnims = useRef({}).current;
+  const correctButtonAnim = useRef(new Animated.Value(0)).current;
+  const levelUpAnim = useRef(new Animated.Value(0)).current;
+  const levelUpOpacity = useRef(new Animated.Value(0)).current;
   const [colorTransition, setColorTransition] = useState({
     from: 1,
     to: 1,
     anim: new Animated.Value(1),
   });
+
+  // Função para inicializar animações de escala dos botões
+  const getButtonScaleAnim = (note) => {
+    if (!buttonScaleAnims[note]) {
+      buttonScaleAnims[note] = new Animated.Value(1);
+    }
+    return buttonScaleAnims[note];
+  };
+
+  // Função para animar press do botão
+  const animateButtonPress = (note) => {
+    const scaleAnim = getButtonScaleAnim(note);
+    Animated.sequence([
+      Animated.timing(scaleAnim, {
+        toValue: 0.95,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  // Função para animar acerto (pulse verde)
+  const animateCorrectAnswer = (note) => {
+    setLastCorrectButton(note);
+    correctButtonAnim.setValue(0);
+    
+    Animated.sequence([
+      Animated.timing(correctButtonAnim, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      Animated.timing(correctButtonAnim, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setLastCorrectButton(null);
+    });
+  };
+
+  // Função para animar Level Up com feedback tátil
+  const animateLevelUp = (newLevel) => {
+    setLevelUpVisible(true);
+    levelUpAnim.setValue(0);
+    levelUpOpacity.setValue(0);
+
+    // Feedback tátil apenas uma vez
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } catch (error) {
+      console.log('Haptics não disponível:', error);
+    }
+
+    // Determinar intensidade baseada no nível
+    const isHighLevel = newLevel >= 6;
+    const maxScale = isHighLevel ? 1.2 : 1.15;
+    const duration = isHighLevel ? 1400 : 1200;
+
+    Animated.parallel([
+      // Animação de escala (0.85 → maxScale → 1)
+      Animated.sequence([
+        Animated.timing(levelUpAnim, {
+          toValue: 0.5,
+          duration: duration * 0.35,
+          easing: Easing.bezier(0.25, 0.1, 0.25, 1), // easeOutCubic
+          useNativeDriver: true,
+        }),
+        Animated.timing(levelUpAnim, {
+          toValue: 1,
+          duration: duration * 0.65,
+          easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+          useNativeDriver: true,
+        }),
+      ]),
+      // Animação de opacidade (0 → 1 → 0)
+      Animated.sequence([
+        Animated.timing(levelUpOpacity, {
+          toValue: 1,
+          duration: duration * 0.4,
+          easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+          useNativeDriver: true,
+        }),
+        Animated.timing(levelUpOpacity, {
+          toValue: 0,
+          duration: duration * 0.6,
+          easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start(() => {
+      setLevelUpVisible(false);
+    });
+  };
 
   const onButtonLayout = (event) => {
     const { width } = event.nativeEvent.layout;
@@ -92,23 +210,25 @@ export default function GameScreen() {
       7: '#9B0A0A',  // Vermelho intenso
       8: '#AB0000',  // Vermelho muito intenso
       9: '#BB0000',  // Vermelho máximo
+      10: '#CC0000', // Vermelho extremo
     };
     return colors[currentLevel] || colors[1];
   };
 
   // Paleta de cores dos botões por nível (combinam com o fundo)
   const getButtonColorByLevel = (currentLevel) => {
-    const colors = {
-      1: '#7c3aed',  // Roxo vibrant
-      2: '#a855f7',  // Roxo mais claro
-      3: '#d946ef',  // Pink/Magenta
-      4: '#ec4899',  // Pink intenso
-      5: '#f43f5e',  // Rose
-      6: '#fb7185',  // Rose claro
-      7: '#fca5a5',  // Rose mais claro
-      8: '#fda4af',  // Rose pálido
-      9: '#fbcfe8',  // Pink muito claro
-    };
+  const colors = {
+    1: '#6d28d9', // Roxo profundo (calmo, foco inicial)
+    2: '#7c3aed', // Roxo vibrante
+    3: '#9333ea', // Roxo-magenta
+    4: '#a21caf', // Magenta escuro
+    5: '#be123c', // Vermelho vinho
+    6: '#9f1239', // Vermelho escuro intenso
+    7: '#7f1d1d', // Vermelho sangue
+    8: '#450a0a', // Vinho muito escuro
+    9: '#1f0505', // Quase preto avermelhado
+    10: '#0f0202', // Preto avermelhado total (clímax)
+  };
     return colors[currentLevel] || colors[1];
   };
 
@@ -180,17 +300,19 @@ export default function GameScreen() {
     // Progressão automática de nível
     let newLevel = 1;
     
-    if (score >= 40) {
-      newLevel = 9;
+    if (score >= 45) {
+      newLevel = 10;
     } else if (score >= 40) {
-      newLevel = 8;
+      newLevel = 9;
     } else if (score >= 35) {
-      newLevel = 7;
+      newLevel = 8;
     } else if (score >= 30) {
-      newLevel = 6;
+      newLevel = 7;
     } else if (score >= 25) {
-      newLevel = 5;
+      newLevel = 6;
     } else if (score >= 20) {
+      newLevel = 5;
+    } else if (score >= 15) {
       newLevel = 4;
     } else if (score >= 10) {
       newLevel = 3;
@@ -200,6 +322,7 @@ export default function GameScreen() {
     
     if (newLevel !== level) {
       setLevel(newLevel);
+      animateLevelUp(newLevel);
       setFeedback(`🔥 Level ${newLevel} desbloqueado!`);
       setTimeout(() => {
         setFeedback('');
@@ -228,7 +351,8 @@ export default function GameScreen() {
       const newAnim = new Animated.Value(0);
       Animated.timing(newAnim, {
         toValue: 1,
-        duration: 500,
+        duration: 600,
+        easing: Easing.bezier(0.25, 0.1, 0.25, 1), // easeOutCubic suave
         useNativeDriver: false,
       }).start();
 
@@ -321,7 +445,7 @@ export default function GameScreen() {
       
       animationRef.current.start();
       
-      console.log('Tocando áudio');
+      console.log('Tocando áudio:', selectedNote);
       await player.play();
       console.log('Áudio iniciou com sucesso');
     } catch (error) {
@@ -362,15 +486,25 @@ export default function GameScreen() {
   };
 
   const handleAnswer = (note) => {
-    if (gameOver || !correctNote) return;
+    if (gameOver || !correctNote || isProcessingAnswer) return;
+
+    // Bloquear novos cliques
+    setIsProcessingAnswer(true);
+
+    // Animar o press do botão
+    animateButtonPress(note);
 
     if (note === correctNote) {
       // Resposta correta
       setScore(score + 1);
       setFeedback('✅ Acertou!');
       
+      // Animar acerto
+      animateCorrectAnswer(note);
+      
       // Tocar próxima nota após um delay
       setTimeout(() => {
+        setIsProcessingAnswer(false);
         playRandomNote();
       }, 1500);
     } else {
@@ -383,6 +517,7 @@ export default function GameScreen() {
       
       // Tocar próxima nota após um delay (se ainda tiver vidas)
       setTimeout(() => {
+        setIsProcessingAnswer(false);
         if (lives - 1 > 0) {
           playRandomNote();
         }
@@ -394,6 +529,7 @@ export default function GameScreen() {
     setShowRestartModal(false);
     setGameOver(false);
     setFeedback('');
+    setIsProcessingAnswer(false);
     
     // Reset background color transition FIRST
     setColorTransition({
@@ -419,20 +555,24 @@ export default function GameScreen() {
       <SafeAreaView style={[styles.container, { backgroundColor: getBackgroundColorByLevel(level) }]}>
         <StatusBar barStyle="light-content" />
         <View style={styles.errorContainer}>
-          <Text style={styles.errorTitle}>❌ Erro ao carregar</Text>
-          <Text style={styles.errorMessage}>{loadError}</Text>
+          <Text style={[styles.errorTitle, { fontFamily: 'Inter_700Bold' }]}>❌ Erro ao carregar</Text>
+          <Text style={[styles.errorMessage, { fontFamily: 'Inter_400Regular' }]}>{loadError}</Text>
         </View>
       </SafeAreaView>
     );
   }
 
+  if (!fontsLoaded) {
+    return null;
+  }
+
   if (gameOver) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: getBackgroundColorByLevel(level) }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: getBackgroundColorByLevel(1) }]}>
         <StatusBar barStyle="light-content" />
         <View style={styles.gameOverContainer}>
-          <Text style={styles.gameOverTitle}>Game Over</Text>
-          <Text style={styles.finalScore}>Pontuação Final: {score}</Text>
+          <Text style={[styles.gameOverTitle, { fontFamily: 'Inter_700Bold' }]}>Game Over</Text>
+          <Text style={[styles.finalScore, { fontFamily: 'Inter_600SemiBold' }]}>Pontuação Final: {score}</Text>
           <TouchableOpacity
             style={[styles.button, styles.restartButton]}
             onPress={restartGame}
@@ -441,7 +581,7 @@ export default function GameScreen() {
               source={require('./assets/Command-Reset-256.png')} 
               style={styles.restartButtonIcon}
             />
-            <Text style={styles.buttonText}>Recomeçar</Text>
+            <Text style={[styles.buttonText, { fontFamily: 'Inter_600SemiBold' }]}>Recomeçar</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -472,29 +612,23 @@ export default function GameScreen() {
           },
         ]}
       >
-      {/* Header com pontuação e vidas */}
-      <View style={styles.header}>
-        <View style={styles.scoreContainer}>
-          <Text style={styles.label}>Pontuação</Text>
-          <Text style={styles.scoreText}>{score}</Text>
+      {/* Barra de status unificada */}
+      <View style={styles.unifiedStatusBar}>
+        <View style={styles.statusItem}>
+          <Text style={[styles.statusIcon, { fontFamily: 'Inter_400Regular' }]}>⭐</Text>
+          <Text style={[styles.statusValue, { fontFamily: 'Inter_700Bold' }]}>{score}</Text>
         </View>
-        <View style={styles.livesContainer}>
-          <Text style={styles.label}>Vidas</Text>
-          <Text style={styles.livesText}>
-            {'❤️'.repeat(lives)}
-          </Text>
+        <View style={styles.statusItem}>
+          <Text style={[styles.statusLabel, { fontFamily: 'Inter_600SemiBold' }]}>LEVEL {level}</Text>
         </View>
-      </View>
-
-      {/* Level */}
-      <View style={styles.levelContainer}>
-        <Text style={styles.levelText}>Level: {level}</Text>
+        <View style={styles.statusItem}>
+          <Text style={[styles.statusValue, { fontFamily: 'Inter_400Regular' }]}>{'❤️'.repeat(lives)}</Text>
+        </View>
       </View>
 
       {/* Título */}
       <View style={styles.titleContainer}>
-        <Text style={styles.title}>🎵 Treino de Ouvido</Text>
-        <Text style={styles.subtitle}>Qual nota está tocando?</Text>
+        <Text style={[styles.subtitle, { fontFamily: 'Inter_400Regular' }]}>Qual nota está tocando?</Text>
       </View>
 
       {/* Botões de controle */}
@@ -524,6 +658,7 @@ export default function GameScreen() {
             source={require('./assets/Media-Play-256.png')} 
             style={[styles.buttonIcon, isPlaying && styles.buttonIconPlaying]}
           />
+          <Text style={[styles.playButtonText, { fontFamily: 'Inter_600SemiBold' }]}> Play</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -541,22 +676,53 @@ export default function GameScreen() {
       <View style={styles.feedbackWrapper}>
         {feedback !== '' && (
           <View style={styles.feedbackContainer}>
-            <Text style={styles.feedbackText}>{feedback}</Text>
+            <Text style={[styles.feedbackText, { fontFamily: 'Inter_600SemiBold' }]}>{feedback}</Text>
           </View>
         )}
       </View>
 
       {/* Botões das notas */}
       <View style={styles.notesContainer}>
-        {getNotesByLevel(level).map((note) => (
-          <TouchableOpacity
-            key={note}
-            style={[styles.noteButton, { backgroundColor: buttonColor, shadowColor: buttonColor }]}
-            onPress={() => handleAnswer(note)}
-          >
-            <Text style={styles.noteButtonText}>{note}</Text>
-          </TouchableOpacity>
-        ))}
+        {getNotesByLevel(level).map((note) => {
+          const scaleAnim = getButtonScaleAnim(note);
+          const isCorrect = lastCorrectButton === note;
+          
+          return (
+            <Animated.View
+              key={note}
+              style={{
+                transform: [
+                  { scale: scaleAnim },
+                  {
+                    scale: isCorrect
+                      ? correctButtonAnim.interpolate({
+                          inputRange: [0, 0.5, 1],
+                          outputRange: [1, 1.15, 1],
+                        })
+                      : 1,
+                  },
+                ],
+              }}
+            >
+              <TouchableOpacity
+                style={[
+                  styles.noteButton,
+                  { 
+                    backgroundColor: buttonColor, 
+                    shadowColor: buttonColor,
+                  },
+                  isCorrect && {
+                    backgroundColor: '#10b981',
+                    shadowColor: '#10b981',
+                  },
+                ]}
+                onPress={() => handleAnswer(note)}
+              >
+                <Text style={[styles.noteButtonText, { fontFamily: 'Inter_700Bold' }]}>{note}</Text>
+              </TouchableOpacity>
+            </Animated.View>
+          );
+        })}
       </View>
 
       {/* Modal de confirmação de restart */}
@@ -568,8 +734,8 @@ export default function GameScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>Recomeçar?</Text>
-            <Text style={styles.modalMessage}>
+            <Text style={[styles.modalTitle, { fontFamily: 'Inter_700Bold' }]}>Recomeçar?</Text>
+            <Text style={[styles.modalMessage, { fontFamily: 'Inter_400Regular' }]}>
               Você perderá todo o progresso atual.
             </Text>
             <View style={styles.modalButtons}>
@@ -577,19 +743,59 @@ export default function GameScreen() {
                 style={[styles.modalButton, styles.modalButtonCancel]}
                 onPress={() => setShowRestartModal(false)}
               >
-                <Text style={styles.modalButtonText}>Cancelar</Text>
+                <Text style={[styles.modalButtonText, { fontFamily: 'Inter_600SemiBold' }]}>Cancelar</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalButton, styles.modalButtonConfirm]}
                 onPress={restartGame}
               >
-                <Text style={styles.modalButtonText}>Confirmar</Text>
+                <Text style={[styles.modalButtonText, { fontFamily: 'Inter_600SemiBold' }]}>Confirmar</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
       </Animated.View>
+
+      {/* Animação de Level Up - fora do container com shake */}
+      {levelUpVisible && (
+        <Animated.View
+          style={[
+            styles.levelUpOverlay,
+            {
+              opacity: levelUpOpacity,
+              backgroundColor: levelUpOpacity.interpolate({
+                inputRange: [0, 1],
+                outputRange: ['rgba(0, 0, 0, 0)', level >= 6 ? 'rgba(0, 0, 0, 0.85)' : 'rgba(0, 0, 0, 0.7)'],
+              }),
+            },
+          ]}
+          pointerEvents="none"
+        >
+          <Animated.View
+            style={{
+              transform: [
+                {
+                  scale: levelUpAnim.interpolate({
+                    inputRange: [0, 0.5, 1],
+                    outputRange: [0.85, level >= 6 ? 1.2 : 1.15, 1],
+                  }),
+                },
+              ],
+            }}
+          >
+            <Text 
+              style={[
+                styles.levelUpText, 
+                { fontFamily: 'Inter_700Bold' },
+                level >= 6 && styles.levelUpTextGlow,
+              ]}
+            >
+              LEVEL {level}
+            </Text>
+          </Animated.View>
+        </Animated.View>
+      )}
     </SafeAreaView>
   );
 }
@@ -603,87 +809,50 @@ const styles = StyleSheet.create({
   gameContainer: {
     flex: 1,
   },
-  adContainer: {
-    marginBottom: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  header: {
+  // Barra de status unificada
+  unifiedStatusBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#16213e',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 15,
     marginTop: 20,
-    marginBottom: 12,
-  },
-  scoreContainer: {
-    backgroundColor: '#16213e',
-    padding: 15,
-    borderRadius: 15,
-    flex: 1,
-    marginRight: 10,
-    alignItems: 'center',
-  },
-  livesContainer: {
-    backgroundColor: '#16213e',
-    padding: 15,
-    borderRadius: 15,
-    flex: 1,
-    marginLeft: 10,
-    alignItems: 'center',
-  },
-  label: {
-    color: '#94a3b8',
-    fontSize: 14,
-    marginBottom: 5,
-  },
-  scoreText: {
-    color: '#4ade80',
-    fontSize: 32,
-    fontWeight: 'bold',
-  },
-  livesText: {
-    fontSize: 24,
-  },
-  levelContainer: {
-    backgroundColor: '#16213e',
-    padding: 15,
-    borderRadius: 15,
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  levelText: {
-    color: '#f59e0b',
-    fontSize: 22,
-    fontWeight: 'bold',
-  },
-  titleContainer: {
-    alignItems: 'center',
     marginBottom: 30,
   },
-  title: {
+  statusItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  statusIcon: {
+    fontSize: 18,
+    opacity: 0.7,
+  },
+  statusValue: {
     color: '#ffffff',
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 8,
+    fontSize: 20,
+  },
+  statusLabel: {
+    color: '#f59e0b',
+    fontSize: 18,
+    letterSpacing: 1,
+  },
+  // Título
+  titleContainer: {
+    alignItems: 'center',
+    marginBottom: 35,
   },
   subtitle: {
     color: '#94a3b8',
-    fontSize: 16,
-  },
-  feedbackWrapper: {
-    height: 70,
-    justifyContent: 'center',
-    marginBottom: 10,
-  },
-  feedbackContainer: {
-    backgroundColor: '#16213e',
-    padding: 15,
-    borderRadius: 15,
-    alignItems: 'center',
-  },
-  feedbackText: {
-    color: '#ffffff',
     fontSize: 18,
-    fontWeight: '600',
+  },
+  // Botões de controle
+  controlButtonsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 30,
   },
   button: {
     padding: 18,
@@ -691,47 +860,45 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  controlButtonsContainer: {
+  playAgainButton: {
+    backgroundColor: '#3b82f6',
+    flex: 1,
     flexDirection: 'row',
     gap: 10,
-    marginBottom: 10,
-  },
-  playAgainButton: {
-    backgroundColor: '#252542',
-    flex: 0.75,
-    borderWidth: 1,
-    borderColor: '#3a3a5c',
     overflow: 'hidden',
     position: 'relative',
+    shadowColor: '#3b82f6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 8,
   },
   progressBar: {
     position: 'absolute',
     left: 0,
     top: 0,
     bottom: 0,
-    backgroundColor: '#3b82f6',
-    opacity: 0.4,
-  },
-  playAgainButtonText: {
-    fontSize: 24,
+    backgroundColor: '#60a5fa',
+    opacity: 0.5,
   },
   retryButton: {
-    backgroundColor: '#252542',
-    flex: 0.25,
+    backgroundColor: '#374151',
+    width: 60,
     borderWidth: 1,
-    borderColor: '#3a3a5c',
+    borderColor: '#4b5563',
   },
-  retryButtonText: {
-    fontSize: 20,
+  playButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
   },
   buttonIcon: {
-    width: 32,
-    height: 32,
+    width: 24,
+    height: 24,
     tintColor: '#ffffff',
     zIndex: 1,
   },
   buttonIconPlaying: {
-    tintColor: '#3b82f6',
+    tintColor: '#60a5fa',
   },
   buttonIconSmall: {
     width: 24,
@@ -742,36 +909,74 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     tintColor: '#ffffff',
-    marginRight: 10,
   },
   buttonText: {
     color: '#ffffff',
     fontSize: 18,
-    fontWeight: '600',
   },
+  // Feedback
+  feedbackWrapper: {
+    height: 70,
+    justifyContent: 'center',
+    marginBottom: 25,
+  },
+  feedbackContainer: {
+    backgroundColor: '#16213e',
+    padding: 15,
+    borderRadius: 15,
+    alignItems: 'center',
+  },
+  feedbackText: {
+    color: '#ffffff',
+    fontSize: 18,
+  },
+  // Botões de notas
   notesContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
-    gap: 12,
+    gap: 14,
+    marginTop: 10,
   },
   noteButton: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 90,
+    height: 90,
+    borderRadius: 45,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 10,
-    elevation: 5,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    elevation: 8,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
   },
   noteButtonText: {
     color: '#ffffff',
-    fontSize: 32,
-    fontWeight: 'bold',
+    fontSize: 36,
   },
+  // Level Up Overlay
+  levelUpOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  levelUpText: {
+    color: '#f59e0b',
+    fontSize: 56,
+    textShadowColor: 'rgba(245, 158, 11, 0.5)',
+    textShadowOffset: { width: 0, height: 4 },
+    textShadowRadius: 10,
+    letterSpacing: 2,
+  },
+  levelUpTextGlow: {
+    textShadowColor: 'rgba(245, 158, 11, 0.8)',
+    textShadowRadius: 20,
+  },
+  // Game Over
   gameOverContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -780,7 +985,6 @@ const styles = StyleSheet.create({
   gameOverTitle: {
     color: '#ef4444',
     fontSize: 48,
-    fontWeight: 'bold',
     marginBottom: 20,
   },
   finalScore: {
@@ -788,6 +992,19 @@ const styles = StyleSheet.create({
     fontSize: 24,
     marginBottom: 40,
   },
+  restartButton: {
+    backgroundColor: '#10b981',
+    paddingHorizontal: 40,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  // Error
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -797,7 +1014,6 @@ const styles = StyleSheet.create({
   errorTitle: {
     color: '#ef4444',
     fontSize: 24,
-    fontWeight: 'bold',
     marginBottom: 15,
   },
   errorMessage: {
@@ -806,12 +1022,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
-  restartButton: {
-    backgroundColor: '#10b981',
-    paddingHorizontal: 40,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
+  // Modal
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
@@ -830,7 +1041,6 @@ const styles = StyleSheet.create({
   modalTitle: {
     color: '#ffffff',
     fontSize: 24,
-    fontWeight: 'bold',
     marginBottom: 10,
   },
   modalMessage: {
@@ -859,6 +1069,5 @@ const styles = StyleSheet.create({
   modalButtonText: {
     color: '#ffffff',
     fontSize: 16,
-    fontWeight: '600',
   },
 });
