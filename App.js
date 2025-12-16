@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { View, Text } from 'react-native';
-import GameScreen from './GameScreen';
+import GameScreen from './src/screens/GameScreen';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
