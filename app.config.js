@@ -24,13 +24,21 @@ export default {
         foregroundImage: "./assets/adaptive-icon.png",
         backgroundColor: "#1a1a2e"
       },
-      package: "com.WillsTavares.eartraininggame"
+      package: "com.WillsTavares.eartraininggame",
+      googleServicesFile: process.env.GOOGLE_SERVICES_JSON
     },
     web: {
       favicon: "./assets/favicon.png"
     },
     plugins: [
-      "expo-audio"
+      "expo-audio",
+      [
+        "react-native-google-mobile-ads",
+        {
+          androidAppId: process.env.GOOGLE_ADMOB_APP_ID,
+          iosAppId: process.env.GOOGLE_ADMOB_APP_ID
+        }
+      ]
     ],
     extra: {
       eas: {

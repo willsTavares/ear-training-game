@@ -17,6 +17,7 @@ import { PlayControls } from '../components/PlayControls';
 import { AnswerButtons } from '../components/AnswerButtons';
 import { LevelTransition } from '../components/LevelTransition';
 import { ShakeContainer } from '../components/ShakeContainer';
+import { AdBanner } from '../components/AdBanner';
 
 // Services & Theme
 import { checkAnswer } from '../services/noteService';
@@ -211,6 +212,8 @@ export default function GameScreen() {
   return (
     <SafeAreaView style={[styles.container, bgColorStyle]}>
       <StatusBar barStyle="light-content" />
+      
+      <AdBanner />
       
       <ShakeContainer shakeAnim={shakeAnim}>
         <GameHeader score={score} level={level} lives={lives} />
