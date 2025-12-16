@@ -44,6 +44,10 @@ export default {
       eas: {
         projectId: "b375cc78-eadc-434c-9fb0-5c6b6153577c"
       }
+    },
+    "react-native-google-mobile-ads": {
+      android_app_id: process.env.GOOGLE_ADMOB_APP_ID,
+      ios_app_id: process.env.GOOGLE_ADMOB_APP_ID
     }
   }
 };
