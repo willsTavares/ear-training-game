@@ -23,6 +23,7 @@ import { checkAnswer } from '../services/noteService';
 import { getBackgroundColorByLevel, COLORS } from '../theme/colors';
 import { SPACING, BORDER_RADIUS } from '../theme/spacing';
 import { FONTS, FONT_SIZES } from '../theme/typography';
+import { getNotesByLevel } from '../constants/levels';
 
 export default function GameScreen() {
   const [fontsLoaded] = useFonts({
@@ -119,6 +120,13 @@ export default function GameScreen() {
   // Handle answer
   const handleAnswer = (note) => {
     if (gameOver || !correctNote || isProcessingAnswer) return;
+
+    // Validar se a correctNote está no nível atual (prevenir bug de sincronização)
+    const currentLevelNotes = getNotesByLevel(level);
+    if (!currentLevelNotes.includes(correctNote)) {
+      console.warn('Nota correta não está no nível atual, ignorando resposta');
+      return;
+    }
 
     setProcessing(true);
     animateButtonPress(note);

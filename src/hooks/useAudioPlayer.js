@@ -35,7 +35,7 @@ export const useAudioPlayer = (level) => {
 
       // Escolher nota aleatória baseada no nível
       const selectedNote = getRandomNote(level);
-      console.log('Nota selecionada:', selectedNote);
+      console.log('Nota selecionada:', selectedNote, 'para o nível', level);
       
       setCorrectNote(selectedNote);
 
