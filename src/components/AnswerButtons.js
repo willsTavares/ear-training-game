@@ -1,9 +1,20 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { View, Text, StyleSheet, Animated } from 'react-native';
+import { PressableButton } from './PressableButton';
 import { getNotesByLevel } from '../constants/levels';
 import { getButtonColorByLevel, COLORS } from '../theme/colors';
 import { SPACING } from '../theme/spacing';
 import { FONTS, FONT_SIZES } from '../theme/typography';
+
+// Helper para criar cor de sombra mais escura
+const getDarkenedColor = (color) => {
+  // Converte hex para RGB e escurece 30%
+  const hex = color.replace('#', '');
+  const r = Math.max(0, parseInt(hex.substring(0, 2), 16) * 0.7);
+  const g = Math.max(0, parseInt(hex.substring(2, 4), 16) * 0.7);
+  const b = Math.max(0, parseInt(hex.substring(4, 6), 16) * 0.7);
+  return `#${Math.round(r).toString(16).padStart(2, '0')}${Math.round(g).toString(16).padStart(2, '0')}${Math.round(b).toString(16).padStart(2, '0')}`;
+};
 
 export const AnswerButtons = ({ 
   level,
@@ -20,6 +31,9 @@ export const AnswerButtons = ({
       {notes.map((note) => {
         const scaleAnim = getButtonScaleAnim(note);
         const isCorrect = lastCorrectButton === note;
+        
+        const currentButtonColor = isCorrect ? COLORS.success : buttonColor;
+        const darkenedShadow = isCorrect ? '#059669' : getDarkenedColor(buttonColor);
         
         return (
           <Animated.View
@@ -38,22 +52,19 @@ export const AnswerButtons = ({
               ],
             }}
           >
-            <TouchableOpacity
+            <PressableButton
               style={[
                 styles.button,
                 { 
-                  backgroundColor: buttonColor, 
-                  shadowColor: buttonColor,
-                },
-                isCorrect && {
-                  backgroundColor: COLORS.success,
-                  shadowColor: COLORS.success,
+                  backgroundColor: currentButtonColor, 
                 },
               ]}
+              shadowColor={darkenedShadow}
+              shadowOffset={6}
               onPress={() => onAnswer(note)}
             >
               <Text style={styles.buttonText}>{note}</Text>
-            </TouchableOpacity>
+            </PressableButton>
           </Animated.View>
         );
       })}
@@ -75,10 +86,6 @@ const styles = StyleSheet.create({
     borderRadius: 45,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 8,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
   },
   buttonText: {
     color: COLORS.text.primary,

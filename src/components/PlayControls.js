@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet, Animated } from 'react-native';
+import { View, Text, Image, StyleSheet, Animated } from 'react-native';
+import { PressableButton } from './PressableButton';
 import { COLORS } from '../theme/colors';
 import { SPACING, BORDER_RADIUS } from '../theme/spacing';
 import { FONTS, FONT_SIZES } from '../theme/typography';
@@ -14,8 +15,10 @@ export const PlayControls = ({
 }) => {
   return (
     <View style={styles.container}>
-      <TouchableOpacity
+      <PressableButton
         style={styles.playButton}
+        shadowColor="#1e40af"
+        shadowOffset={6}
         onPress={onPlay}
         disabled={isPlaying}
         onLayout={onLayout}
@@ -41,17 +44,19 @@ export const PlayControls = ({
         <Text style={styles.playText}>
           {isPlaying ? 'Tocando...' : 'Ouvir nota'}
         </Text>
-      </TouchableOpacity>
+      </PressableButton>
 
-      <TouchableOpacity
+      <PressableButton
         style={styles.restartButton}
+        shadowColor="#1f2937"
+        shadowOffset={5}
         onPress={onRestart}
       >
         <Image 
           source={require('../../assets/Command-Reset-256.png')} 
           style={styles.restartIcon}
         />
-      </TouchableOpacity>
+      </PressableButton>
     </View>
   );
 };
@@ -67,17 +72,13 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     gap: 10,
-    padding: SPACING.md + 2,
+    paddingVertical: SPACING.md + 4,
+    paddingHorizontal: SPACING.lg + 70,
     borderRadius: BORDER_RADIUS.md,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
     position: 'relative',
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 8,
   },
   progressBar: {
     position: 'absolute',
