@@ -48,7 +48,7 @@ export const PlayControls = ({
 
       <PressableButton
         style={styles.restartButton}
-        shadowColor="#1f2937"
+        shadowColor="#000000"
         shadowOffset={5}
         onPress={onRestart}
       >
@@ -101,6 +101,9 @@ const styles = StyleSheet.create({
     color: COLORS.text.primary,
     fontSize: FONT_SIZES.sm,
     fontFamily: FONTS.semiBold,
+    textShadowColor: 'rgba(0,0,0,0.45)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 3,
   },
   restartButton: {
     backgroundColor: '#374151',

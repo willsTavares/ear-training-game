@@ -9,19 +9,19 @@ export const BACKGROUND_COLORS = {
   8: '#AB0000',
   9: '#BB0000',
   10: '#CC0000',
-};
+};  
 
 export const BUTTON_COLORS = {
-  1: '#6d28d9',
-  2: '#7c3aed',
-  3: '#9333ea',
-  4: '#a21caf',
-  5: '#be123c',
-  6: '#9f1239',
-  7: '#7f1d1d',
-  8: '#450a0a',
-  9: '#1f0505',
-  10: '#0f0202',
+  1: '#f49547ff', // Laranja suave (acolhedor)
+  2: '#FB923C', // Laranja médio
+  3: '#F97316', // Laranja vibrante
+  4: '#EA580C', // Laranja queimado
+  5: '#F87171', // Vermelho claro
+  6: '#EF4444', // Vermelho padrão
+  7: '#DC2626', // Vermelho forte
+  8: '#B91C1C', // Vermelho escuro
+  9: '#7F1D1D', // Vinho
+  10: '#450A0A', // Vinho profundo (clímax)
 };
 
 export const getBackgroundColorByLevel = (level) => {

@@ -79,7 +79,7 @@ export const PressableButton = ({
     borderRadius: getBorderRadius(),
     opacity: shadowOpacity.interpolate({
       inputRange: [0, 1],
-      outputRange: [0, 0.5],
+      outputRange: [0, 0.65],
     }),
   };
 
@@ -114,7 +114,7 @@ export const PressableButton = ({
 
 const styles = StyleSheet.create({
   container: {
-    position: 'relative',
+    // Sem estilos que afetem o layout
   },
   button: {
     position: 'relative',
