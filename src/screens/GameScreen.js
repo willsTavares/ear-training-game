@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StatusBar, StyleSheet, TouchableOpacity, Image, Modal } from 'react-native';
+import { View, Text, StatusBar, StyleSheet, TouchableOpacity, Image, Modal, ImageBackground } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFonts, Inter_400Regular, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { PressStart2P_400Regular } from '@expo-google-fonts/press-start-2p';
@@ -217,10 +217,15 @@ export default function GameScreen() {
       };
 
   return (
-    <SafeAreaView style={[styles.container, bgColorStyle]}>
-      <StatusBar barStyle="light-content" />
-      
-      <ShakeContainer shakeAnim={shakeAnim}>
+    <ImageBackground 
+      source={require('../../assets/background.png')} 
+      style={styles.backgroundImage}
+      resizeMode="cover"
+    >
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="light-content" />
+        
+        <ShakeContainer shakeAnim={shakeAnim}>
         <GameHeader score={score} level={level} lives={lives} />
 
         <View style={styles.titleContainer}>
@@ -283,29 +288,39 @@ export default function GameScreen() {
         </Modal>
       </ShakeContainer>
 
-      <LevelTransition
-        visible={levelUpVisible}
-        level={level}
-        levelUpAnim={levelUpAnim}
-        levelUpOpacity={levelUpOpacity}
-      />
-    </SafeAreaView>
+        <LevelTransition
+          visible={levelUpVisible}
+          level={level}
+          levelUpAnim={levelUpAnim}
+          levelUpOpacity={levelUpOpacity}
+        />
+      </SafeAreaView>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
+  backgroundImage: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
   container: {
     flex: 1,
     paddingHorizontal: SPACING.lg,
   },
   titleContainer: {
     alignItems: 'center',
-    marginBottom: SPACING.xxl + 5,
+    marginBottom: SPACING.xxl,
+    marginTop: SPACING.xs,
   },
   subtitle: {
-    color: COLORS.text.secondary,
-    fontSize: FONT_SIZES.md,
-    fontFamily: FONTS.regular,
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: FONT_SIZES.lg,
+    fontFamily: FONTS.semiBold,
+    textShadowColor: 'rgba(0, 0, 0, 0.4)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   feedbackWrapper: {
     height: 70,

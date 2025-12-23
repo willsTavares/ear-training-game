@@ -33,13 +33,14 @@ export const useAnimations = () => {
     const scaleAnim = getButtonScaleAnim(note);
     Animated.sequence([
       Animated.timing(scaleAnim, {
-        toValue: 0.95,
+        toValue: 0.94,
         duration: 100,
         useNativeDriver: true,
       }),
-      Animated.timing(scaleAnim, {
+      Animated.spring(scaleAnim, {
         toValue: 1,
-        duration: 100,
+        friction: 6,
+        tension: 200,
         useNativeDriver: true,
       }),
     ]).start();

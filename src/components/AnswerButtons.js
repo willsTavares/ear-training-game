@@ -56,11 +56,16 @@ export const AnswerButtons = ({
               style={[
                 styles.button,
                 { 
-                  backgroundColor: currentButtonColor, 
+                  backgroundColor: currentButtonColor,
+                  shadowColor: currentButtonColor,
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.4,
+                  shadowRadius: 8,
+                  elevation: 8,
                 },
               ]}
               shadowColor={darkenedShadow}
-              shadowOffset={6}
+              shadowOffset={8}
               onPress={() => onAnswer(note)}
             >
               <Text style={styles.buttonText}>{note}</Text>
@@ -88,11 +93,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   buttonText: {
-    color: COLORS.text.primary,
+    color: '#FFFFFF',
     fontSize: FONT_SIZES.xxl,
     fontFamily: FONTS.bold,
-    textShadowColor: 'rgba(0,0,0,0.45)',
+    textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 3,
+    textShadowRadius: 4,
   },
 });
