@@ -21,7 +21,7 @@ export default {
     },
     android: {
       adaptiveIcon: {
-        foregroundImage: "./assets/adaptive-icon.png",
+        foregroundImage: "./assets/icon.png",
         backgroundColor: "#1a1a2e"
       },
       package: "com.WillsTavares.eartraininggame"
