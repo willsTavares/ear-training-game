@@ -8,6 +8,7 @@ export default {
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",
+    owner: "willstavares13-organization",
     splash: {
       image: "./assets/splash.png",
       resizeMode: "contain",
@@ -24,7 +25,8 @@ export default {
         foregroundImage: "./assets/icon.png",
         backgroundColor: "#1a1a2e"
       },
-      package: "com.WillsTavares.eartraininggame"
+      package: "com.WillsTavares.eartraininggame",
+      versionCode: 1
     },
     web: {
       favicon: "./assets/favicon.png"
@@ -34,7 +36,8 @@ export default {
     ],
     extra: {
       eas: {
-        projectId: "b375cc78-eadc-434c-9fb0-5c6b6153577c"
+        projectId: "4f307409-435d-483b-8821-a2b800d89d99",
+        owner: "willstavares13-organization"
       }
     }
   }

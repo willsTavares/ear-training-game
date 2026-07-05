@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { View, Text } from 'react-native';
 import GameScreen from './src/screens/GameScreen';
@@ -36,11 +36,6 @@ class ErrorBoundary extends React.Component {
 }
 
 export default function App() {
-  useEffect(() => {
-    // Log para verificar se App está carregando
-    console.log('App iniciado');
-  }, []);
-
   return (
     <ErrorBoundary>
       <SafeAreaProvider>

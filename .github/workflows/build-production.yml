@@ -1,0 +1,65 @@
+name: Build Android Production (Play Store)
+
+# Gera um AAB (Android App Bundle) de produção como artefato do workflow,
+# pronto para upload manual no Google Play Console.
+#
+# Requisitos (uma única vez):
+#   1. Criar um access token em https://expo.dev/accounts/[conta]/settings/access-tokens
+#   2. Salvar como secret EXPO_TOKEN no repositório (Settings > Secrets and variables > Actions)
+#   3. Ter a keystore Android gerenciada pelo EAS (rodar `eas credentials` ou
+#      um primeiro `eas build -p android` interativo localmente para criá-la)
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-android:
+    name: Build AAB (production)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verificar EXPO_TOKEN
+        run: |
+          if [ -z "${{ secrets.EXPO_TOKEN }}" ]; then
+            echo "::error::Secret EXPO_TOKEN não configurado. Crie um token em https://expo.dev/settings/access-tokens e adicione em Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Setup Java (JDK 17)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Build AAB de produção (EAS local)
+        run: eas build --platform android --profile production --local --non-interactive --output ${{ github.workspace }}/ear-training-game-production.aab
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Publicar artefato
+        uses: actions/upload-artifact@v4
+        with:
+          name: ear-training-game-production-aab
+          path: ear-training-game-production.aab
+          if-no-files-found: error
+          retention-days: 30

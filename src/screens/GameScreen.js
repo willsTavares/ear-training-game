@@ -19,6 +19,7 @@ import { PlayControls } from '../components/PlayControls';
 import { AnswerButtons } from '../components/AnswerButtons';
 import { LevelTransition } from '../components/LevelTransition';
 import { ShakeContainer } from '../components/ShakeContainer';
+import { LoadingScreen } from '../components/LoadingScreen';
 
 // Services & Theme
 import { checkAnswer } from '../services/noteService';
@@ -28,7 +29,7 @@ import { FONTS, FONT_SIZES } from '../theme/typography';
 import { getNotesByLevel } from '../constants/levels';
 
 export default function GameScreen() {
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
     Inter_600SemiBold,
     Inter_700Bold,
@@ -114,7 +115,6 @@ export default function GameScreen() {
   // Initial note
   useEffect(() => {
     const timer = setTimeout(() => {
-      console.log('Iniciando primeira nota');
       playRandomNote();
     }, 500);
     
@@ -165,12 +165,13 @@ export default function GameScreen() {
     setShowRestartModal(false);
     resetGame();
     resetColorTransition();
-    playRandomNote();
+    // Nível explícito: o estado ainda não re-renderizou neste ponto
+    playRandomNote(1);
   };
 
-  // Loading state
-  if (!fontsLoaded) {
-    return null;
+  // Loading state (se a fonte falhar, segue com a fonte do sistema)
+  if (!fontsLoaded && !fontError) {
+    return <LoadingScreen />;
   }
 
   // Error state

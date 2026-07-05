@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { Animated } from 'react-native';
 import { createAudioPlayer } from 'expo-audio';
 import { AUDIO_FILES } from '../constants/notes';
-import { getRandomNote } from '../services/noteService';
+import { drawNoteFromBag } from '../services/noteService';
 
 export const useAudioPlayer = (level) => {
   const [correctNote, setCorrectNote] = useState(null);
@@ -14,14 +14,24 @@ export const useAudioPlayer = (level) => {
   const progressAnim = useRef(new Animated.Value(0)).current;
   const animationRef = useRef(null);
 
+  // Ref para o nível: callbacks agendados (setTimeout) sempre leem o nível
+  // atual, evitando sortear nota de um nível antigo capturado no closure
+  const levelRef = useRef(level);
+  levelRef.current = level;
+
+  // Estado do "saco de notas" (sorteio sem reposição) e última nota tocada,
+  // usados para garantir que toda nota do nível apareça antes de repetir
+  const noteBagRef = useRef({ level: null, notes: [] });
+  const correctNoteRef = useRef(null);
+
   const onButtonLayout = useCallback((event) => {
     const { width } = event.nativeEvent.layout;
     setButtonWidth(width);
   }, []);
 
-  const playRandomNote = useCallback(async () => {
+  const playRandomNote = useCallback(async (overrideLevel) => {
     try {
-      console.log('playRandomNote iniciado');
+      const currentLevel = overrideLevel ?? levelRef.current;
 
       // Liberar player anterior se existir
       if (playerRef.current) {
@@ -33,10 +43,15 @@ export const useAudioPlayer = (level) => {
         playerRef.current = null;
       }
 
-      // Escolher nota aleatória baseada no nível
-      const selectedNote = getRandomNote(level);
-      console.log('Nota selecionada:', selectedNote, 'para o nível', level);
-      
+      // Escolher próxima nota do saco (sem reposição dentro do nível atual)
+      const { note: selectedNote, bagState } = drawNoteFromBag(
+        currentLevel,
+        noteBagRef.current,
+        correctNoteRef.current
+      );
+      noteBagRef.current = bagState;
+      correctNoteRef.current = selectedNote;
+
       setCorrectNote(selectedNote);
 
       // Verificar se o arquivo de áudio existe
@@ -58,7 +73,6 @@ export const useAudioPlayer = (level) => {
       player.addListener('playbackStatusUpdate', (status) => {
         try {
           if (status.didJustFinish) {
-            console.log('Áudio terminou de tocar');
             setIsPlaying(false);
             
             if (animationRef.current) {
@@ -91,22 +105,19 @@ export const useAudioPlayer = (level) => {
       });
       
       animationRef.current.start();
-      
-      console.log('Tocando áudio:', selectedNote);
+
       await player.play();
-      console.log('Áudio iniciou com sucesso');
     } catch (error) {
       console.error('Erro ao tocar nota:', error);
       setLoadError(error.message);
     }
-  }, [level, progressAnim]);
+  }, [progressAnim]);
 
   const playAgain = useCallback(async () => {
     if (!correctNote || isPlaying) return;
 
     try {
       if (playerRef.current) {
-        console.log('Tocando novamente');
         await playerRef.current.seekTo(0);
         await playerRef.current.play();
         setIsPlaying(true);
