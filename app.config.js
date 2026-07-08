@@ -32,7 +32,8 @@ export default {
       favicon: "./assets/favicon.png"
     },
     plugins: [
-      "expo-audio"
+      ["expo-audio", { recordAudioAndroid: false }],
+      "./plugins/withStripUnusedAudioPermissions"
     ],
     extra: {
       eas: {

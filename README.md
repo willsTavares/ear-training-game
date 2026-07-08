@@ -87,3 +87,9 @@ npx eas build --platform android --profile production
 - ✅ Feedback visual, sonoro e tátil de acertos e erros
 - ✅ Tela de Game Over com compartilhamento do resultado
 - ✅ Interface responsiva e intuitiva
+
+## 🔒 Privacidade
+
+O app não coleta nenhum dado pessoal — veja a [Política de Privacidade](PRIVACY.md)
+completa. Esse arquivo também serve como URL de política de privacidade
+exigida pelo Google Play Console (veja a nota abaixo).
